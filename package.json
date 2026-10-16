@@ -1,0 +1,59 @@
+{
+  "name": "vite-plugin-env-parity",
+  "version": "0.1.0",
+  "description": "Vite plugin that fails your build when a variable from .env.example is missing or empty. Zero config, zero dependencies.",
+  "keywords": [
+    "vite",
+    "vite-plugin",
+    "env",
+    "dotenv",
+    ".env",
+    ".env.example",
+    "environment-variables",
+    "validation"
+  ],
+  "license": "MIT",
+  "author": "acus9345 <acus9345@gmail.com>",
+  "homepage": "https://github.com/acus9345/vite-plugin-env-parity#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/acus9345/vite-plugin-env-parity.git"
+  },
+  "bugs": {
+    "url": "https://github.com/acus9345/vite-plugin-env-parity/issues"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepublishOnly": "npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}
