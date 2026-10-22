@@ -58,25 +58,58 @@ test("real vite build fails with a helpful error when a key is missing", async (
   );
 });
 
-test("dev server only warns by default", async () => {
-  const root = project({ ".env.example": "VITE_API_URL=\n" });
-  const { logger, warnings } = capturingLogger();
-  const server = await createServer({
+const devServer = (root, plugin, logger = createLogger("silent")) =>
+  createServer({
     root,
     configFile: false,
     logLevel: "silent",
     customLogger: logger,
-    plugins: [envParity()],
+    plugins: [plugin],
     server: { middlewareMode: true, ws: false },
   });
-  await server.close();
-  assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /\[vite-plugin-env-parity\] 1 variable .* \(mode "development"\)/);
+
+test("dev server fails to start by default", async () => {
+  const root = project({ ".env.example": "VITE_API_URL=\n" });
+  await assert.rejects(
+    devServer(root, envParity()),
+    (e) =>
+      e instanceof EnvParityError &&
+      /\[vite-plugin-env-parity\] 1 variable .* \(mode "development"\)/.test(e.message) &&
+      /envParity\(\{ failOn: "build" \}\)/.test(e.message),
+  );
 });
 
-test("failOn: always fails in dev, never only warns in build", async () => {
+test("failOn: build only warns in dev", async () => {
   const root = project({ ".env.example": "VITE_API_URL=\n" });
-  await assert.rejects(resolve(root, "serve", envParity({ failOn: "always" })).run, /VITE_API_URL/);
+  const { logger, warnings } = capturingLogger();
+  const server = await devServer(root, envParity({ failOn: "build" }), logger);
+  await server.close();
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /Missing: +VITE_API_URL/);
+});
+
+test("test mode (Vitest) only warns", async () => {
+  const root = project({ ".env.example": "VITE_API_URL=\n" });
+  const { run, warnings } = resolve(root, "serve", envParity(), { mode: "test" });
+  await run;
+  assert.match(warnings[0], /Missing: +VITE_API_URL/);
+});
+
+test("vite preview only warns", async () => {
+  const root = project({ ".env.example": "VITE_API_URL=\n" });
+  const { logger, warnings } = capturingLogger();
+  await resolveConfig(
+    { root, configFile: false, logLevel: "silent", customLogger: logger, plugins: [envParity()] },
+    "serve",
+    "production",
+    "production",
+    true,
+  );
+  assert.match(warnings[0], /Missing: +VITE_API_URL/);
+});
+
+test("failOn: never only warns in build", async () => {
+  const root = project({ ".env.example": "VITE_API_URL=\n" });
   const { run, warnings } = resolve(root, "build", envParity({ failOn: "never" }));
   await run;
   assert.match(warnings[0], /Missing: +VITE_API_URL/);
@@ -116,12 +149,18 @@ test("options: example, allowEmpty, ignore, reportExtra", async () => {
   );
 });
 
-test("missing example: fails build, warns in dev", async () => {
+test("missing example: fails build, warns in dev with failOn: build", async () => {
   const root = project({ ".env": "A=1\n" });
   await assert.rejects(resolve(root, "build", envParity()).run, (e) => e.code === "EXAMPLE_NOT_FOUND");
-  const { run, warnings } = resolve(root, "serve", envParity());
+  const { run, warnings } = resolve(root, "serve", envParity({ failOn: "build" }));
   await run;
   assert.match(warnings[0], /Could not find \.env\.example/);
+});
+
+test("scan: fails when code reads a variable the example doesn't list", async () => {
+  const root = project({ ".env.example": "VITE_API_URL=\n", ".env": "VITE_API_URL=x\n", "main.js": "console.log(import.meta.env.VITE_NEW_FLAG);\n" });
+  await resolve(root, "build", envParity()).run;
+  await assert.rejects(resolve(root, "build", envParity({ scan: true })).run, /Undeclared: +VITE_NEW_FLAG \(main\.js:1\)/);
 });
 
 test("parse warnings are logged but do not fail", async () => {
@@ -136,7 +175,7 @@ test("invalid options throw immediately with a helpful message", () => {
   const cases = [
     [null, /expects an options object.*got null/],
     ["x", /expects an options object/],
-    [{ failOn: "sometimes" }, /"failOn" must be "build", "always" or "never", but got "sometimes"/],
+    [{ failOn: "sometimes" }, /"failOn" must be "start", "build", "always" or "never", but got "sometimes"/],
     [{ allowEmpty: "yes" }, /"allowEmpty" must be true or false/],
     [{ ignore: "A" }, /"ignore" must be an array/],
     [{ example: "" }, /"example" must be a file path/],

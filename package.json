@@ -1,7 +1,7 @@
 {
   "name": "vite-plugin-env-parity",
-  "version": "0.1.0",
-  "description": "Vite plugin that fails your build when a variable from .env.example is missing or empty. Zero config, zero dependencies.",
+  "version": "0.2.0",
+  "description": "Vite plugin that fails your build or dev server start when a variable from .env.example is missing or empty. Zero config. Built on @acus9345/env-parity.",
   "keywords": [
     "vite",
     "vite-plugin",
@@ -40,6 +40,9 @@
   ],
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
+  },
+  "dependencies": {
+    "@acus9345/env-parity": "^0.1.1"
   },
   "peerDependencies": {
     "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"

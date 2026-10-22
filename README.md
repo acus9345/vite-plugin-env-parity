@@ -1,15 +1,16 @@
 # vite-plugin-env-parity
 
-Fail your Vite build when a variable listed in `.env.example` is missing or empty, so it doesn't silently become `undefined` in production.
+Fail your Vite build, or the dev-server start, when a variable listed in `.env.example` is missing or empty, so it doesn't silently become `undefined` in production.
 
 [![npm](https://img.shields.io/npm/v/vite-plugin-env-parity)](https://www.npmjs.com/package/vite-plugin-env-parity)
 [![license](https://img.shields.io/npm/l/vite-plugin-env-parity)](LICENSE)
 
 - **Zero config**: your existing `.env.example` is the schema.
 - **Mode-aware**: checks the same files Vite loads (`.env`, `.env.local`, `.env.[mode]`, `.env.[mode].local`) plus environment variables, so it works in CI.
-- **Friendly in dev**: `vite build` fails, `vite dev` only warns.
+- **Fails early** (new in 0.2): `vite build` and `vite dev` both stop. `vite preview` only warns, and so does a dev-server restart (Vite keeps the running server). Prefer warnings in dev? Use `failOn: "build"`.
+- **Checks your code too** (new in 0.2): with `scan: true`, an `import.meta.env.X` that `.env.example` doesn't list fails like a missing variable.
 - **Catches Windows encoding traps**: `.env` files saved as UTF-16 (what `>` does in Windows PowerShell) or with a BOM, which Vite can't read.
-- No runtime dependencies. Vite 6, 7 and 8. Node.js 20.19+ or 22.12+.
+- One small dependency: [@acus9345/env-parity](https://www.npmjs.com/package/@acus9345/env-parity), the core shared with [env-parity-plugin](https://www.npmjs.com/package/env-parity-plugin) (Next.js, Webpack, Rspack, Rollup, Rolldown, Astro). Vite 6, 7 and 8. Node.js 20.19+ or 22.12+.
 
 ## Install
 
@@ -74,20 +75,23 @@ Then do steps 1–3 above. The `vanilla-ts` template has no `vite.config.ts`, so
 ```ts
 envParity({
   example: ".env.example",
-  failOn: "build",
+  failOn: "start",
   allowEmpty: false,
   reportExtra: false,
   ignore: [],
+  scan: false,
 });
 ```
 
 | Option | Default | Description |
 | --- | --- | --- |
 | `example` | `".env.example"` in your `envDir` | File that lists the required variables. Relative paths resolve from the Vite `root`. |
-| `failOn` | `"build"` | `"build"`: fail `vite build`, warn in `vite dev`/`vite preview`. `"always"`: fail every command. `"never"`: only warn. |
+| `failOn` | `"start"` | `"start"`: fail `vite build` and `vite dev`, warn in `vite preview`. `"build"`: fail `vite build` only (the 0.1 default). `"always"`: fail every command. `"never"`: only warn. |
 | `allowEmpty` | `false` | Accept variables that are set but empty (`KEY=`). |
 | `reportExtra` | `false` | Also fail when your .env files define variables that the example doesn't list, so it stays up to date. |
 | `ignore` | `[]` | Variables to skip. `*` is a wildcard: `["DEBUG", "SENTRY_*"]`. |
+| `scan` | `false` | Also scan source files for `import.meta.env.X` and `process.env.X`, and fail on variables the example doesn't list. `true`, or `{ paths, exclude, unused }`. |
+| `envFiles` | Vite's files | Env file names, lowest priority first. `{mode}` becomes the mode. |
 
 Where a variable can be set (later ones win, same as Vite):
 
@@ -101,10 +105,10 @@ The files are read from Vite's `envDir` (the project root unless you changed it)
 
 ### Examples
 
-Fail in dev too, and allow optional variables to be empty:
+Only warn while developing, and allow optional variables to be empty:
 
 ```ts
-envParity({ failOn: "always", allowEmpty: true });
+envParity({ failOn: "build", allowEmpty: true });
 ```
 
 Use a different example file and skip some variables:
